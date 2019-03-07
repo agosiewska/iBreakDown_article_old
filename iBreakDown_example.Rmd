@@ -1,0 +1,76 @@
+---
+title: "iBreakDown intro"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Read data
+
+```{r}
+titanic <- read.table("titanic_bd.csv", sep=",", header = T)
+head(titanic)
+```
+
+# Train a model
+
+```{r}
+library("randomForest")
+rf <- randomForest(Survived ~ Pclass + Sex + Age, data = titanic[,c(2:5)])
+```
+
+# Create explainer
+
+```{r}
+library("DALEX")
+library("iBreakDown")
+
+explainer_rf <- explain(rf,
+                        data = titanic[,c(3:5)],
+                        y = titanic$Survived)
+```
+
+# Create instance level explanation
+
+2-years old boy that travels in the second class
+
+```{r}
+titanic[274,]
+predict(rf, titanic[274,])
+```
+
+# Sequential attributions
+
+## Scenario 1
+
+It's a boy so smaller survival.
+He traveled in the second class so even lower survival (negative).
+But he is very young do odds are higher (positive), **most passangers in the second class are adults**.
+
+```{r}
+(exp_1 <- local_attributions(explainer_rf, titanic[274,], order=c(2, 1,3)))
+plot(exp_1)
+```
+
+## Scenario 2
+
+It's a boy so smaller survival.
+He is very young so odds are higher (positive).
+And he traveled in the second class so odds are even more higher (positive), **most kids are from the third class**.
+
+```{r}
+(exp_2 <- local_attributions(explainer_rf, titanic[274,], order=c(2, 3,1)))
+plot(exp_2)
+```
+
+# With interactions
+
+Effect of age depends on passanger class. 
+
+```{r}
+(exp_3 <- local_interactions(explainer_rf, titanic[274,]))
+plot(exp_3)
+```
+
